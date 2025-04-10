@@ -1,214 +1,99 @@
-import { QuestionData, ModelAnswer, StudentResponse, SimilarResponse, FeatureImportanceItem } from './types';
+import Papa from 'papaparse';
+import { QuestionData, StudentResponse, FeatureImportanceItem, SimilarResponse } from './types';
 
-/**
- * Parst een CSV-bestand met vraag, modelantwoord en studentantwoorden
- * @param csvContent De inhoud van het CSV-bestand
- * @returns Een QuestionData object met alle gegevens
- */
+function parseFeatureImportance(text: string): FeatureImportanceItem[] {
+  if (!text) return [];
+  return text.split(',').map(item => {
+    const [word, importance] = item.split(':').map(s => s.trim());
+    return {
+      word,
+      importance: (importance || 'low') as 'low' | 'medium' | 'high'
+    };
+  }).filter(item => item.word);
+}
+
+function parseSimilarResponses(responses: string[], scores: string[]): SimilarResponse[] {
+  const result: SimilarResponse[] = [];
+
+  for (let i = 0; i < responses.length; i++) {
+    if (responses[i] && scores[i]) {
+      result.push({
+        response: responses[i],
+        score: parseFloat(scores[i]) || 0
+      });
+    }
+  }
+
+  return result;
+}
+
 export function parseCSV(csvContent: string): QuestionData[] {
-  const lines = csvContent.split('\n');
-  const data: Record<string, string> = {};
+  const results = Papa.parse(csvContent, {
+    header: true,
+    delimiter: ';',
+    skipEmptyLines: true
+  });
 
-  // Eerst zoeken we de vraag en modelantwoord
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line || line.startsWith('student_id')) continue;
+  const questions = new Map<string, QuestionData>();
 
-    const [key, value] = line.split(',').map(s => s.trim());
+  results.data.forEach((row: any) => {
+    const questionId = row.question_id;
 
-    if (key && value) {
-      data[key] = value;
+    if (!questions.has(questionId)) {
+      questions.set(questionId, {
+        questionId,
+        assignmentName: `Question ${questionId}`,
+        question: row.question_text,
+        modelAnswer: {
+          part1: {
+            prefix: row.modelantwoord_deel1_prefix,
+            completion: row.modelantwoord_deel1_completion
+          },
+          part2: {
+            prefix: row.modelantwoord_deel2_prefix,
+            completion: row.modelantwoord_deel2_completion
+          }
+        },
+        studentResponses: []
+      });
     }
 
-    // Als we bij de header van de studentgegevens zijn, stoppen we
-    if (key === 'student_id') {
-      break;
-    }
-  }
+    const question = questions.get(questionId)!;
 
-  // Modelantwoorden verzamelen
-  const modelAnswer: ModelAnswer = {
-    part1: {
-      prefix: data['modelantwoord_deel1_prefix'] || '',
-      completion: data['modelantwoord_deel1_completion'] || ''
-    },
-    part2: {
-      prefix: data['modelantwoord_deel2_prefix'] || '',
-      completion: data['modelantwoord_deel2_completion'] || ''
-    }
-  };
-
-  // Vind de headerregel voor studentgegevens
-  let headerIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('student_id')) {
-      headerIndex = i;
-      break;
-    }
-  }
-
-  if (headerIndex === -1) {
-    throw new Error('Geen studentgegevens gevonden in het CSV bestand');
-  }
-
-  // Headers parsen
-  const headers = lines[headerIndex].split(',').map(header => header.trim());
-
-  // Studentgegevens verzamelen
-  const studentResponses: StudentResponse[] = [];
-
-  for (let i = headerIndex + 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = splitCSVLine(line);
-
-    if (values.length < headers.length) continue;
-
-    const studentData: Record<string, string> = {};
-
-    // Map de waarden aan de headers
-    headers.forEach((header, index) => {
-      studentData[header] = values[index];
-    });
-
-    // Feature importance parsen
-    const featureImportancePart1 = parseFeatureImportance(studentData['feature_importance_deel1'] || '');
-    const featureImportancePart2 = parseFeatureImportance(studentData['feature_importance_deel2'] || '');
-
-    // Vergelijkbare antwoorden parsen
+    // Parse similar responses
     const similarResponses = parseSimilarResponses(
-      studentData['similar_responses_deel1'] || '',
-      studentData['similar_responses_deel2'] || ''
+      [row.sim_response_1, row.sim_response_2, row.sim_response_3],
+      [row.sim_response_score_1, row.sim_response_score_2, row.sim_response_score_3]
     );
 
-    // StudentResponse object maken
-    const student: StudentResponse = {
-      id: parseInt(studentData['student_id'] || '0'),
-      name: `Leerling ${parseInt(studentData['student_id'] || '0')}`,
+    const studentResponse: StudentResponse = {
+      id: parseInt(row.student_id.replace(/\D/g, '')),
+      name: `Student ${row.student_id}`,
       response: {
         part1: {
-          prefix: studentData['antwoord_deel1_prefix'] || '',
-          completion: studentData['antwoord_deel1_completion'] || ''
+          prefix: row.antwoord_deel1_prefix,
+          completion: row.antwoord_deel1_completion
         },
         part2: {
-          prefix: studentData['antwoord_deel2_prefix'] || '',
-          completion: studentData['antwoord_deel2_completion'] || ''
+          prefix: row.antwoord_deel2_prefix,
+          completion: row.antwoord_deel2_completion
         }
       },
       aiScore: {
-        part1: parseInt(studentData['ai_score_deel1'] || '0'),
-        part2: parseInt(studentData['ai_score_deel2'] || '0'),
-        total: parseInt(studentData['ai_score_deel1'] || '0') + parseInt(studentData['ai_score_deel2'] || '0')
+        part1: parseInt(row.ai_score_deel1) || 0,
+        part2: parseInt(row.ai_score_deel2) || 0,
+        total: parseInt(row.ai_score_total) || 0
       },
-      confidence: parseInt(studentData['ai_confidence'] || '0'),
+      confidence: parseInt(row.ai_confidence) || 0,
       featureImportance: {
-        part1: featureImportancePart1,
-        part2: featureImportancePart2
+        part1: parseFeatureImportance(row.deel1_light_highlight),
+        part2: parseFeatureImportance(row.deel2_light_highlight)
       },
-      similarResponses: similarResponses
+      similarResponses
     };
 
-    studentResponses.push(student);
-  }
+    question.studentResponses.push(studentResponse);
+  });
 
-  // QuestionData object samenstellen
-  return {
-    assignmentName: data['opdracht_naam'] || '',
-    question: data['vraag'] || '',
-    modelAnswer,
-    studentResponses
-  };
-}
-
-/**
- * Parst een string met feature importance items
- * Format: "woord:importance,woord:importance"
- */
-function parseFeatureImportance(importanceString: string): FeatureImportanceItem[] {
-  if (!importanceString) return [];
-
-  // Splitsen op komma's voor elk woord:importance paar
-  return importanceString.split(',')
-    .map(item => {
-      const [word, importance] = item.split(':');
-      if (!word || !importance) return null;
-
-      return {
-        word: word.trim(),
-        importance: (importance.trim() as 'high' | 'medium' | 'low')
-      };
-    })
-    .filter((item): item is FeatureImportanceItem => item !== null);
-}
-
-/**
- * Parst een string met vergelijkbare antwoorden
- * Format: "deel1:tekst|deel2:tekst|score_deel1:1|score_deel2:0;deel1:tekst|..."
- */
-function parseSimilarResponses(part1String: string, part2String: string): SimilarResponse[] {
-  const responses: SimilarResponse[] = [];
-
-  // Parse deel 1 antwoorden
-  if (part1String) {
-    const part1Responses = part1String.split(';').map(item => {
-      const [answer, score] = item.split('|').map(part => {
-        const [key, value] = part.split(':');
-        return value.trim();
-      });
-      return { answer, score: parseFloat(score) };
-    });
-
-    // Parse deel 2 antwoorden
-    const part2Responses = part2String ? part2String.split(';').map(item => {
-      const [answer, score] = item.split('|').map(part => {
-        const [key, value] = part.split(':');
-        return value.trim();
-      });
-      return { answer, score: parseFloat(score) };
-    }) : [];
-
-    // Combineer antwoorden
-    const maxLength = Math.max(part1Responses.length, part2Responses.length);
-    for (let i = 0; i < maxLength; i++) {
-      responses.push({
-        part1: part1Responses[i]?.answer || '',
-        part2: part2Responses[i]?.answer || '',
-        score: {
-          part1: part1Responses[i]?.score || 0,
-          part2: part2Responses[i]?.score || 0,
-          total: (part1Responses[i]?.score || 0) + (part2Responses[i]?.score || 0)
-        }
-      });
-    }
-  }
-
-  return responses;
-}
-
-/**
- * Hulpfunctie om CSV regels correct te splitsen, rekening houdend met komma's in waarden
- */
-function splitCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let currentValue = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(currentValue);
-      currentValue = '';
-    } else {
-      currentValue += char;
-    }
-  }
-
-  // Laatste waarde toevoegen
-  result.push(currentValue);
-
-  return result;
+  return Array.from(questions.values());
 }

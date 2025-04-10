@@ -1,3 +1,4 @@
+
 export interface ModelAnswer {
   part1: {
     prefix: string;
@@ -40,26 +41,22 @@ export interface FeatureImportanceItem {
 }
 
 export interface SimilarResponse {
-  part1: string;
-  part2: string;
-  score: {
-    part1: number;
-    part2: number;
-    total: number;
-  };
+  response: string;
+  score: number;
+}
+
+export interface QuestionData {
+  questionId: string;
+  assignmentName: string;
+  question: string;
+  modelAnswer: ModelAnswer;
+  studentResponses: StudentResponse[];
 }
 
 export interface TeacherScore {
   part1: string | number;
   part2: string | number;
   total: string | number;
-}
-
-export interface QuestionData {
-  assignmentName: string;
-  question: string;
-  modelAnswer: ModelAnswer;
-  studentResponses: StudentResponse[];
 }
 
 export interface ScoringStats {
