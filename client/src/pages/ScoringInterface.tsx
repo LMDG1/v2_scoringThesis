@@ -43,7 +43,8 @@ const ScoringInterface = () => {
     number | null
   >(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [customData, setCustomData] = useState<QuestionData | null>(null);
+  const [customData, setCustomData] = useState<QuestionData[]>([]);
+  const currentQuestion = customData[currentQuestionIndex];
   const [stats, setStats] = useState<ScoringStats>({
     totalStudents: 0,
     scoredStudents: 0,
@@ -52,9 +53,9 @@ const ScoringInterface = () => {
 
   // Initialize teacher scores when data loads
   useEffect(() => {
-    if (customData) {
+    if (currentQuestion) {
       // Initialize all teacher scores with empty values
-      const initialScores = customData.studentResponses.map(() => ({
+      const initialScores = currentQuestion.studentResponses.map(() => ({
         part1: "",
         part2: "",
         total: "",
@@ -62,27 +63,27 @@ const ScoringInterface = () => {
       setTeacherScores(initialScores);
 
       setStats({
-        totalStudents: customData.studentResponses.length,
+        totalStudents: currentQuestion.studentResponses.length,
         scoredStudents: 0,
-        pendingStudents: customData.studentResponses.length,
+        pendingStudents: currentQuestion.studentResponses.length,
       });
     }
-  }, [customData]);
+  }, [currentQuestion]);
 
   // Calculate scoring statistics
   useEffect(() => {
-    if (customData && teacherScores.length > 0) {
+    if (currentQuestion && teacherScores.length > 0) {
       const scoredCount = teacherScores.filter(
         (score) => score.total !== "",
       ).length;
 
       setStats({
-        totalStudents: customData.studentResponses.length,
+        totalStudents: currentQuestion.studentResponses.length,
         scoredStudents: scoredCount,
-        pendingStudents: customData.studentResponses.length - scoredCount,
+        pendingStudents: currentQuestion.studentResponses.length - scoredCount,
       });
     }
-  }, [teacherScores, customData]);
+  }, [teacherScores, currentQuestion]);
 
   // Score input handler
   const handleScoreChange = (
@@ -90,10 +91,10 @@ const ScoringInterface = () => {
     part: "part1" | "part2" | "total",
     score: string | number,
   ) => {
-    if (!customData) return;
+    if (!currentQuestion) return;
 
     const newScores = [...teacherScores];
-    const studentIndex = customData.studentResponses.findIndex(
+    const studentIndex = currentQuestion.studentResponses.findIndex(
       (s) => s.id === studentId,
     );
 
@@ -156,12 +157,11 @@ const ScoringInterface = () => {
   // Functie om naar de volgende vraag te gaan
   const handleNextQuestion = () => {
     // Ga naar de volgende vraag als er nog meer vragen zijn
-    if (currentQuestionIndex < 2) {
+    if (currentQuestionIndex < customData.length - 1) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
 
       // Reset de scores voor de nieuwe vraag
-
       setTeacherScores([]);
 
       // Reset expandedStudents en activeSimilarResponses
@@ -181,10 +181,10 @@ const ScoringInterface = () => {
   // Save all scores
   const handleSaveScores = async () => {
     try {
-      if (!customData) return;
+      if (!currentQuestion) return;
 
       const scores = teacherScores.map((score, index) => ({
-        studentId: customData.studentResponses[index].id,
+        studentId: currentQuestion.studentResponses[index].id,
         score,
       }));
 
@@ -208,10 +208,10 @@ const ScoringInterface = () => {
   // Submit all scores
   const handleSubmitScores = async () => {
     try {
-      if (!customData) return;
+      if (!currentQuestion) return;
 
       const scores = teacherScores.map((score, index) => ({
-        studentId: customData.studentResponses[index].id,
+        studentId: currentQuestion.studentResponses[index].id,
         score,
       }));
 
@@ -233,9 +233,9 @@ const ScoringInterface = () => {
 
   // Accept all AI scores
   const handleAcceptAIScores = () => {
-    if (!customData) return;
+    if (!currentQuestion) return;
 
-    const newScores = customData.studentResponses.map((student) => ({
+    const newScores = currentQuestion.studentResponses.map((student) => ({
       part1: student.aiScore.part1,
       part2: student.aiScore.part2,
       total: student.aiScore.total,
@@ -273,26 +273,30 @@ const ScoringInterface = () => {
           setCustomData(parsedData);
 
           // Initialize teacher scores
-          const initialScores = parsedData.studentResponses.map(() => ({
-            part1: "",
-            part2: "",
-            total: "",
-          }));
-          setTeacherScores(initialScores);
+          if(parsedData.length > 0){
+            const initialScores = parsedData[0].studentResponses.map(() => ({
+              part1: "",
+              part2: "",
+              total: "",
+            }));
+            setTeacherScores(initialScores);
+          }
 
           // Reset expanded state
           setExpandedStudents({});
 
           // Update stats
-          setStats({
-            totalStudents: parsedData.studentResponses.length,
-            scoredStudents: 0,
-            pendingStudents: parsedData.studentResponses.length,
-          });
+          if(parsedData.length > 0){
+            setStats({
+              totalStudents: parsedData[0].studentResponses.length,
+              scoredStudents: 0,
+              pendingStudents: parsedData[0].studentResponses.length,
+            });
+          }
 
           toast({
             title: "CSV succesvol ingelezen",
-            description: `${parsedData.studentResponses.length} leerlingantwoorden geladen.`,
+            description: `${parsedData.length > 0 ? parsedData[0].studentResponses.length : 0} leerlingantwoorden geladen.`,
           });
         } catch (error) {
           console.error("Error parsing CSV:", error);
@@ -343,7 +347,7 @@ const ScoringInterface = () => {
     );
   }
 
-  if (isError || !customData) {
+  if (isError || !currentQuestion) {
     return (
       <div className="container mx-auto p-4 flex items-center justify-center min-h-screen">
         <div className="text-center bg-white p-6 rounded-lg shadow-md max-w-md">
@@ -479,7 +483,7 @@ const ScoringInterface = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
           <div className="text-sm text-gray-500">
             <span className="mr-2">
-              Opdracht: {customData?.assignmentName || "Onbekend"}
+              Opdracht: {currentQuestion?.assignmentName || "Onbekend"}
             </span>
           </div>
         </div>
@@ -488,10 +492,10 @@ const ScoringInterface = () => {
         <div className="w-full mt-2">
           <div className="flex justify-between text-xs text-gray-500 mb-1">
             <span>Voortgang vraagbeoordelingen</span>
-            <span>{currentQuestionIndex + 1}/3 voltooid</span>
+            <span>{currentQuestionIndex + 1}/{customData.length} voltooid</span>
           </div>
           <Progress
-            value={((currentQuestionIndex + 1) / 3) * 100}
+            value={((currentQuestionIndex + 1) / customData.length) * 100}
             className="h-2"
           />
         </div>
@@ -501,13 +505,13 @@ const ScoringInterface = () => {
       <div className="grid grid-cols-12 gap-6">
         {/* Left Column - Fixed Question and Model Answer */}
         <QuestionPanel
-          question={customData?.question}
-          modelAnswer={customData?.modelAnswer}
+          question={currentQuestion?.question}
+          modelAnswer={currentQuestion?.modelAnswer}
         />
 
         {/* Right Column - Scrollable Student Responses */}
         <div className="col-span-12 md:col-span-8 space-y-6 max-h-screen overflow-y-auto pr-2">
-          {customData?.studentResponses.map((student, studentIndex) => (
+          {currentQuestion?.studentResponses.map((student, studentIndex) => (
             <StudentResponseCard
               key={student.id}
               student={student}

@@ -5,7 +5,7 @@ import { QuestionData, ModelAnswer, StudentResponse, SimilarResponse, FeatureImp
  * @param csvContent De inhoud van het CSV-bestand
  * @returns Een QuestionData object met alle gegevens
  */
-export function parseCSV(csvContent: string): QuestionData {
+export function parseCSV(csvContent: string): QuestionData[] {
   const lines = csvContent.split('\n');
   const data: Record<string, string> = {};
 
