@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0 --port 4444",
     "build": "vite build",
     "start": "vite preview",
-    "check": "tsc"
+    "check": "tsc",
+    "deploy": "vite build && firebase deploy --only hosting"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
