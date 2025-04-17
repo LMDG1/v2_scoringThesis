@@ -300,7 +300,7 @@ const ScoringInterface = () => {
                 className="w-full py-6 flex flex-col items-center gap-2" 
                 onClick={async () => {
                   try {
-                    const response = await fetch('@/data/v4_voorbeeld.csv');
+                    const response = await fetch('v4_voorbeeld.csv');
                     const csvContent = await response.text();
                     handleCSVUpload(new File([csvContent], 'biology.csv'));
                   } catch (error) {
