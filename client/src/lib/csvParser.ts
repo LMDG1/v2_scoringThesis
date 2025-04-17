@@ -1,20 +1,31 @@
 import Papa from 'papaparse';
 import { QuestionData, StudentResponse, FeatureImportanceItem, SimilarResponse } from './types';
 
-function parseFeatureImportance(text: string): FeatureImportanceItem[] {
-  if (!text) return [];
-  return text.split(',').map(item => {
-    const [word, importance] = item.split(':').map(s => s.trim());
-    return {
-      word,
-      importance: (importance || 'low') as 'low' | 'medium' | 'high'
-    };
-  }).filter(item => item.word);
+function parseFeatureImportance(lightHighlight: string, darkHighlight: string): FeatureImportanceItem[] {
+  const items: FeatureImportanceItem[] = [];
+  // Process light highlights
+  if (lightHighlight) {
+    lightHighlight.split(',').forEach(item => {
+      const word = item.trim();
+      if (word) {
+        items.push({ word, importance: 'low' });
+      }
+    });
+  }
+  // Process dark highlights
+  if (darkHighlight) {
+    darkHighlight.split(',').forEach(item => {
+      const word = item.trim();
+      if (word) {
+        items.push({ word, importance: 'high' });
+      }
+    });
+  }
+  return items;
 }
 
 function parseSimilarResponses(responses: string[], scores: string[]): SimilarResponse[] {
   const result: SimilarResponse[] = [];
-
   for (let i = 0; i < responses.length; i++) {
     if (responses[i] && scores[i]) {
       result.push({
@@ -23,7 +34,6 @@ function parseSimilarResponses(responses: string[], scores: string[]): SimilarRe
       });
     }
   }
-
   return result;
 }
 
@@ -43,6 +53,7 @@ export function parseCSV(csvContent: string): QuestionData[] {
       questions.set(questionId, {
         questionId,
         assignmentName: `Question ${questionId}`,
+        contextQuestion: row.context_question,
         question: row.question_text,
         modelAnswer: {
           part1: {
@@ -60,10 +71,14 @@ export function parseCSV(csvContent: string): QuestionData[] {
 
     const question = questions.get(questionId)!;
 
-    // Parse similar responses
-    const similarResponses = parseSimilarResponses(
-      [row.sim_response_1, row.sim_response_2, row.sim_response_3],
-      [row.sim_response_score_1, row.sim_response_score_2, row.sim_response_score_3]
+    const similarResponsesPart1 = parseSimilarResponses(
+      [row.pt1_sim_response_1, row.pt1_sim_response_2, row.pt1_sim_response_3],
+      [row.pt1_sim_response_score_1, row.pt1_sim_response_score_2, row.pt1_sim_response_score_3]
+    );
+
+    const similarResponsesPart2 = parseSimilarResponses(
+      [row.pt2_sim_response_1, row.pt2_sim_response_2, row.pt2_sim_response_3],
+      [row.pt2_sim_response_score_1, row.pt2_sim_response_score_2, row.pt2_sim_response_score_3]
     );
 
     const studentResponse: StudentResponse = {
@@ -86,10 +101,17 @@ export function parseCSV(csvContent: string): QuestionData[] {
       },
       confidence: parseInt(row.ai_confidence) || 0,
       featureImportance: {
-        part1: parseFeatureImportance(row.deel1_light_highlight),
-        part2: parseFeatureImportance(row.deel2_light_highlight)
+        part1: parseFeatureImportance(row.deel1_light_highlight, row.deel1_dark_highlight),
+        part2: parseFeatureImportance(row.deel2_light_highlight, row.deel2_dark_highlight)
       },
-      similarResponses
+      similarResponses: {
+        part1: similarResponsesPart1,
+        part2: similarResponsesPart2
+      },
+      pt1_similar_right: parseInt(row.pt1_similar_right) || 0,
+      pt1_similar_wrong: parseInt(row.pt1_similar_wrong) || 0,
+      pt2_similar_right: parseInt(row.pt2_similar_right) || 0,
+      pt2_similar_wrong: parseInt(row.pt2_similar_wrong) || 0,
     };
 
     question.studentResponses.push(studentResponse);

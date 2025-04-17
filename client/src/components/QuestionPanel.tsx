@@ -5,11 +5,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Info, Maximize2 } from 'lucide-react';
 
 interface QuestionPanelProps {
+  contextQuestion: string;
   question: string;
   modelAnswer: ModelAnswer;
 }
 
-const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, modelAnswer }) => {
+const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion, modelAnswer }) => {
   return (
     <div className="col-span-12 md:col-span-4 space-y-4 md:sticky md:top-4 md:self-start">
       {/* Test Question */}
@@ -17,7 +18,12 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, modelAnswer }) 
         <div className="mb-3">
           <h2 className="font-semibold text-gray-900">Toetsvraag</h2>
         </div>
-        <p className="text-sm text-blue-800">{question}</p>
+        <p className="text-sm text-gray-800">
+          {contextQuestion} {/* Display context question */}
+          <br />
+          <br />
+          <strong>{question}</strong> {/* Making the question bold */}
+        </p>
       </Card>
       
       {/* Correctievoorschrift */}

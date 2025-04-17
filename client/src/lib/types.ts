@@ -32,7 +32,14 @@ export interface StudentResponse {
     part1: FeatureImportanceItem[];
     part2: FeatureImportanceItem[];
   };
-  similarResponses: SimilarResponse[];
+  similarResponses: {
+    part1: SimilarResponse[];
+    part2: SimilarResponse[];
+  };  
+  pt1_similar_right: number;
+  pt1_similar_wrong: number;
+  pt2_similar_right: number;
+  pt2_similar_wrong: number;
 }
 
 export interface FeatureImportanceItem {
@@ -48,6 +55,7 @@ export interface SimilarResponse {
 export interface QuestionData {
   questionId: string;
   assignmentName: string;
+  contextQuestion: string;
   question: string;
   modelAnswer: ModelAnswer;
   studentResponses: StudentResponse[];

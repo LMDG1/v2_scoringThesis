@@ -1,21 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect, useRef} from "react";
 import QuestionPanel from "@/components/QuestionPanel";
 import StudentResponseCard from "@/components/StudentResponseCard";
 import { TeacherScore, QuestionData, ScoringStats } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import {
-  Save,
   AlertTriangle,
   ArrowRight,
   Upload,
   FileWarning,
-  Check,
   Info,
 } from "lucide-react";
+import v4_voorbeeld from "@/data/v4_voorbeeld.csv";
 import { parseCSV } from "@/lib/csvParser";
 import {
   Dialog,
@@ -26,10 +23,10 @@ import {
 
 const ScoringInterface = () => {
   const { toast } = useToast();
+  const studentResponsesRef = useRef<HTMLDivElement>(null); // to scroll to top of student responses.
 
   // State for info dialog
   const [isInfoDialogOpen, setInfoDialogOpen] = useState(false);
-
 
   const isLoading = false;
   const isError = false;
@@ -156,98 +153,33 @@ const ScoringInterface = () => {
 
   // Functie om naar de volgende vraag te gaan
   const handleNextQuestion = () => {
-    // Ga naar de volgende vraag als er nog meer vragen zijn
-    if (currentQuestionIndex < customData.length - 1) {
+     // Check if there are more questions
+  if (currentQuestionIndex < customData.length - 1) {
+    // Update the current question index
+    setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+
+    // Reset the scores for the new question
+    setTeacherScores([]);
+
+    // Reset expandedStudents and activeSimilarResponses
+    setExpandedStudents({});
+    setActiveSimilarResponses(null);
+
+    // Scroll to the top of the student responses container
+    setTimeout(() => {
+      // Scroll the entire page to the top
       window.scrollTo({ top: 0, behavior: "smooth" });
-      setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
-
-      // Reset de scores voor de nieuwe vraag
-      setTeacherScores([]);
-
-      // Reset expandedStudents en activeSimilarResponses
-      setExpandedStudents({});
-      setActiveSimilarResponses(null);
-
-      // Update de data met de nieuwe vraag
-
-    } else {
-      toast({
-        title: "Einde bereikt",
-        description: "Dit was de laatste vraag",
-      });
-    }
-  };
-
-  // Save all scores
-  const handleSaveScores = async () => {
-    try {
-      if (!currentQuestion) return;
-
-      const scores = teacherScores.map((score, index) => ({
-        studentId: currentQuestion.studentResponses[index].id,
-        score,
-      }));
-
-
-      toast({
-        title: "Scores opgeslagen",
-        description: "Alle scores zijn succesvol opgeslagen in uw browser.",
-      });
-
-    } catch (error) {
-      toast({
-        title: "Fout bij opslaan",
-        description:
-          "Er is een probleem opgetreden bij het opslaan van de scores. Probeer het opnieuw.",
-        variant: "destructive",
-      });
-      console.error(error);
-    }
-  };
-
-  // Submit all scores
-  const handleSubmitScores = async () => {
-    try {
-      if (!currentQuestion) return;
-
-      const scores = teacherScores.map((score, index) => ({
-        studentId: currentQuestion.studentResponses[index].id,
-        score,
-      }));
-
-      toast({
-        title: "Scores ingediend",
-        description: "Alle scores zijn succesvol ingediend in uw browser.",
-      });
-
-    } catch (error) {
-      toast({
-        title: "Fout bij indienen",
-        description:
-          "Er is een probleem opgetreden bij het indienen van de scores. Probeer het opnieuw.",
-        variant: "destructive",
-      });
-      console.error(error);
-    }
-  };
-
-  // Accept all AI scores
-  const handleAcceptAIScores = () => {
-    if (!currentQuestion) return;
-
-    const newScores = currentQuestion.studentResponses.map((student) => ({
-      part1: student.aiScore.part1,
-      part2: student.aiScore.part2,
-      total: student.aiScore.total,
-    }));
-
-    setTeacherScores(newScores);
-
+      if (studentResponsesRef.current) {
+        studentResponsesRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 0); // Use a timeout to ensure it runs after state updates
+  } else {
     toast({
-      title: "AI-scores overgenomen",
-      description: "Alle AI-scores zijn overgenomen als uw beoordelingen.",
+      title: "Einde bereikt",
+      description: "Dit was de laatste vraag",
     });
-  };
+  }
+};
 
   // Handle CSV upload
   const handleCSVUpload = async (file: File) => {
@@ -268,10 +200,12 @@ const ScoringInterface = () => {
         try {
           // Parse CSV content
           const parsedData = parseCSV(csvContent);
+          console.log(parsedData)
 
           // Update state with the new data
           setCustomData(parsedData);
-
+          console.log("Parsed Data:", parsedData);
+          
           // Initialize teacher scores
           if(parsedData.length > 0){
             const initialScores = parsedData[0].studentResponses.map(() => ({
@@ -347,36 +281,90 @@ const ScoringInterface = () => {
     );
   }
 
-  if (isError || !currentQuestion) {
+  if (!currentQuestion) {
     return (
       <div className="container mx-auto p-4 flex items-center justify-center min-h-screen">
-        <div className="text-center bg-white p-6 rounded-lg shadow-md max-w-md">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">
-            Fout bij het laden van data
-          </h2>
-          <p className="text-gray-600 mb-4">
-            De beoordelingsinterface kon niet worden geladen. Vernieuw de pagina
-            of upload een CSV-bestand met beoordelingsgegevens.
+        <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-xl">
+          <h1 className="text-3xl font-bold text-primary mb-4">
+            Welkom bij de Nakijktool
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Deze tool helpt je bij het beoordelen van open vragen met behulp van AI. 
+            Kies een voorbeelddataset of upload je eigen CSV-bestand om te beginnen.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => window.location.reload()}>
-              Pagina vernieuwen
-            </Button>
-            <label className="cursor-pointer bg-primary hover:bg-primary/90 text-white rounded-md px-3 py-2 text-sm flex items-center gap-1 hover:shadow-sm transition-all">
-              <input
-                type="file"
-                accept=".csv"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleCSVUpload(file);
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button 
+                variant="outline"
+                className="w-full py-6 flex flex-col items-center gap-2" 
+                onClick={async () => {
+                  try {
+                    const response = await fetch('@/data/v4_voorbeeld.csv');
+                    const csvContent = await response.text();
+                    handleCSVUpload(new File([csvContent], 'biology.csv'));
+                  } catch (error) {
+                    toast({
+                      title: "Error loading biology CSV",
+                      description: "Could not load the example CSV file",
+                      variant: "destructive"
+                    });
                   }
                 }}
-              />
-              <Upload className="h-4 w-4" /> CSV importeren
+                  >
+                <span className="text-lg font-semibold">Biologie Dataset</span>
+                {/* <span className="text-sm text-gray-500">Open vragen over ecosystemen</span> */}
+              </Button>
+              
+              <Button 
+                variant="outline"
+                className="w-full py-6 flex flex-col items-center gap-2"
+                // onClick={() => handleCSVUpload(new File([v4_voorbeeld], 'economy.csv'))}
+              >
+                <span className="text-lg font-semibold">Economie Dataset</span>
+                {/* <span className="text-sm text-gray-500">Open vragen over marktwerking</span> */}
+              </Button>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Of</span>
+              </div>
+            </div>
+
+            <label className="cursor-pointer w-full">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-primary transition-colors">
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleCSVUpload(file);
+                    }
+                  }}
+                />
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-8 w-8 text-gray-400" />
+                  <span className="font-medium">Upload je eigen CSV-bestand</span>
+                  <span className="text-sm text-gray-500">
+                    Sleep een bestand hierheen of klik om te uploaden
+                  </span>
+                </div>
+              </div>
             </label>
+
+            {/* <div className="mt-4 text-sm text-gray-500">
+              <Button variant="link" asChild>
+                <a href="/csv-format-instructies.md" target="_blank" rel="noopener noreferrer">
+                  Bekijk CSV formaat instructies
+                </a>
+              </Button>
+            </div> */}
           </div>
         </div>
       </div>
@@ -392,7 +380,7 @@ const ScoringInterface = () => {
             Nakijken met behulp van AI
           </h1>
           <div className="flex space-x-2">
-            <label className="relative cursor-pointer bg-white hover:bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 flex items-center gap-1 hover:shadow-sm transition-all">
+            {/* <label className="relative cursor-pointer bg-white hover:bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 flex items-center gap-1 hover:shadow-sm transition-all">
               <input
                 type="file"
                 accept=".csv"
@@ -405,9 +393,9 @@ const ScoringInterface = () => {
                 }}
               />
               <Upload className="h-4 w-4" /> CSV importeren
-            </label>
+            </label> */}
 
-            <div className="relative group">
+            {/* <div className="relative group">
               <Button
                 variant="outline"
                 className="flex items-center gap-1 text-sm h-9"
@@ -433,7 +421,7 @@ const ScoringInterface = () => {
                   </a>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* Add the "i" button here */}
             <Dialog>
               <DialogTrigger asChild>
@@ -445,10 +433,7 @@ const ScoringInterface = () => {
                   <Info className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent
-                open={isInfoDialogOpen}
-                onOpenChange={setInfoDialogOpen}
-              >
+              <DialogContent>
                 <h3 className="text-lg font-semibold">Extra Informatie</h3>
                 <p>Deze tool geeft AI score-suggesties op basis van:</p>
                 <ul className="list-disc list-inside mb-4">
@@ -456,12 +441,22 @@ const ScoringInterface = () => {
                     De vergelijkbaarbeid van een leerlingantwoord met het
                     antwoordmodel.
                   </li>
-                  <li>De voorheen gescoorde leerlingantwoorden.</li>
+                  <li>De voorheen gescoorde leerlingantwoordeSn.</li>
                 </ul>
                 <p>De 'Waarom?' knop toont:</p>
                 <ul className="list-disc list-inside">
                   <li>
-                    De woorden die (veel) hebben bijgedragen aan de AI score.
+                    De woorden die hebben bijgedragen aan de AI score.  
+                    <br />
+                    <span className="bg-blue-300 text-gray-900 px-1 rounded pl-6 inline-block">
+                      Donkerblauwe
+                    </span>{" "}
+                    woorden zijn heel relevant voor AI score.
+                    <br />
+                    <span className="bg-blue-100 text-gray-900 px-1 rounded pl-6 inline-block">
+                       Lichtblauwe
+                    </span>{" "}
+                    woorden zijn minder relevant voor AI score. 
                   </li>
                   <li>
                     Hoe zeker de AI is van een score suggestie, uitgedrukt in
@@ -507,10 +502,14 @@ const ScoringInterface = () => {
         <QuestionPanel
           question={currentQuestion?.question}
           modelAnswer={currentQuestion?.modelAnswer}
+          contextQuestion={currentQuestion?.contextQuestion}
         />
 
         {/* Right Column - Scrollable Student Responses */}
-        <div className="col-span-12 md:col-span-8 space-y-6 max-h-screen overflow-y-auto pr-2">
+        <div 
+          className="col-span-12 md:col-span-8 space-y-6 max-h-screen overflow-y-auto pr-2"
+          ref={studentResponsesRef} // Attach the ref to this div
+        >
           {currentQuestion?.studentResponses.map((student, studentIndex) => (
             <StudentResponseCard
               key={student.id}
