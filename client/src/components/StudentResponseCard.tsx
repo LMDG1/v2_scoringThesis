@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// import SimilarResponsesList from "./SimilarResponsesList";
-import { StudentResponse, TeacherScore, SimilarResponse } from "@/lib/types";
+import { StudentResponse, TeacherScore } from "@/lib/types";
 import { Info, Layers } from "lucide-react";
+import { logUserAction } from "@/lib/firebase-logging";
+
 
 interface StudentResponseCardProps {
   student: StudentResponse;
@@ -29,7 +30,6 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
   onToggleSimilarResponses,
 }) => {
   const [activePart, setActivePart] = useState<"part1" | "part2" | null>(null);
-  // const [isInfoDialogOpen, setInfoDialogOpen] = useState(false); 
 
   // Render text with or without highlighting for a specific part
   const renderStudentResponse = (part: "part1" | "part2") => {
@@ -73,6 +73,31 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
     );
   };
 
+  // Handler for similar responses toggle with Firebase logging
+  const handleToggleSimilarResponses = (part: "part1" | "part2") => {
+    const newPart = activePart === part ? null : part;
+    setActivePart(newPart);
+
+    if (!showSimilarResponses && newPart !== null) {
+      onToggleSimilarResponses();
+    } else if (showSimilarResponses && newPart === null) {
+      onToggleSimilarResponses();
+    }
+
+    // Log the action to Firebase
+    const actionName = activePart === part
+      ? `Verberg vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`
+      : `Toon vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`;
+
+    logUserAction('click', actionName, {
+      studentId: student.id,
+      studentName: student.name,
+      part: part,
+      expanded: isExpanded,
+      showingSimilarResponses: showSimilarResponses
+    });
+  };
+
   // Calculate confidence color
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 90) return "text-green-600";
@@ -86,18 +111,17 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
   // Combine both part scores for the total AI score
   const totalAIScore = student.aiScore.total;
 
-  // Functie voor het weergeven van vergelijkbare antwoorden per antwoorddeel
+  // Function to render similar responses per answer part
   const renderSimilarResponsesForPart = (part: "part1" | "part2") => {
-    const responses = student.similarResponses[part];
-    const goodCount = part === "part1" ? student.pt1_similar_right : student.pt2_similar_right; 
-    const badCount = part === "part1" ? student.pt1_similar_wrong : student.pt2_similar_wrong; 
+    const goodCount = part === "part1" ? student.pt1_similar_right : student.pt2_similar_right;
+    const badCount = part === "part1" ? student.pt1_similar_wrong : student.pt2_similar_wrong;
     const totalSimilarCount = goodCount + badCount; // Total count for display
 
     return (
       <div className="text-xs bg-white p-2 rounded border border-gray-200 mt-1">
         <div className="flex items-center gap-1 mb-1">
           <span>
-          {totalSimilarCount} soortgelijke antwoorden voor deel{" "}
+            {totalSimilarCount} soortgelijke antwoorden voor deel{" "}
             {part === "part1" ? "1" : "2"}:
           </span>
         </div>
@@ -106,16 +130,6 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
             <span className="w-3 h-3 rounded-full bg-green-500"></span>
             <span>{goodCount} wel goed</span>
           </div>
-          {/* <div className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-amber-400"></span>
-            <span>
-              {Math.max(
-                0,
-                student.similarResponses.length - goodCount - badCount,
-              )}{" "}
-              misschien goed
-            </span>
-          </div> */}
           <div className="flex items-center gap-1">
             <span className="w-3 h-3 rounded-full bg-red-400"></span>
             <span>{badCount} niet goed</span>
@@ -125,7 +139,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
     );
   };
 
-  // Functie voor het weergeven van vergelijkbare antwoorden details per deel
+  // Function to render detailed similar responses per part
   const renderDetailedSimilarResponsesForPart = (part: "part1" | "part2") => {
     const responses = student.similarResponses[part];
     return (
@@ -141,13 +155,12 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
             <div className="mb-1 text-xs text-gray-700">{response.response}</div>
             <div className="flex items-center gap-2">
               <div
-                className={`rounded-full w-2 h-2 ${
-                  response.score === 1
-                    ? "bg-green-500"
-                    : response.score === 0
-                      ? "bg-red-400"
-                      : "bg-amber-400"
-                }`}
+                className={`rounded-full w-2 h-2 ${response.score === 1
+                  ? "bg-green-500"
+                  : response.score === 0
+                    ? "bg-red-400"
+                    : "bg-amber-400"
+                  }`}
               ></div>
               <span className="text-xs">
                 {response.score === 1
@@ -169,21 +182,6 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
         <h2 className="font-semibold text-lg text-gray-800">
           {student.name}
         </h2>
-        {/* <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={() => setInfoDialogOpen(true)}>
-              <Info className="h-3 w-3 mr-1" />
-              Info
-            </Button>
-          </DialogTrigger>
-          <DialogContent open={isInfoDialogOpen} onOpenChange={setInfoDialogOpen}>
-            <h3 className="text-lg font-semibold">Extra Informatie</h3>
-            <p>Hier kunt u meer uitleg krijgen over de scores en het beoordelingsproces.</p>
-            <DialogClose asChild>
-              <Button variant="outline">Sluiten</Button>
-            </DialogClose>
-          </DialogContent>
-        </Dialog> */}
       </div>
 
       {/* Combined response */}
@@ -200,13 +198,12 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
               <div className="px-2 py-1 border-r border-gray-200">
                 <div className="flex flex-col">
                   <span
-                    className={`text-xs font-medium ${
-                      totalAIScore === 2
-                        ? "text-green-600"
-                        : totalAIScore === 1
+                    className={`text-xs font-medium ${totalAIScore === 2
+                      ? "text-green-600"
+                      : totalAIScore === 1
                         ? "text-amber-600"
                         : "text-red-500"
-                    }`}
+                      }`}
                   >
                     AI score: {totalAIScore}/2
                   </span>
@@ -221,7 +218,14 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                 variant="ghost"
                 size="sm"
                 className="text-xs h-full px-2 hover:bg-amber-50 text-blue-800"
-                onClick={onToggleExplanation}
+                onClick={() => {
+                  onToggleExplanation();
+                  // Log this action too
+                  logUserAction('click', isExpanded ? 'Verberg uitleg' : 'Waarom?', {
+                    studentId: student.id,
+                    studentName: student.name
+                  });
+                }}
               >
                 <Info className="h-3 w-3 mr-1" />
                 {isExpanded ? "Verberg" : "Waarom?"}
@@ -273,7 +277,16 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                       : "ghost"
                   }
                   className={`px-2 h-6 text-xs font-medium border-r ${score.part1 === "0" || score.part1 === 0 ? "bg-primary text-white" : ""}`}
-                  onClick={() => onScoreChange(student.id, "part1", "0")}
+                  onClick={() => {
+                    onScoreChange(student.id, "part1", "0");
+                    // Log score change
+                    logUserAction('click', 'Score deel 1: 0', {
+                      studentId: student.id,
+                      studentName: student.name,
+                      part: "part1",
+                      score: 0
+                    });
+                  }}
                 >
                   0
                 </Button>
@@ -284,7 +297,16 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                       : "ghost"
                   }
                   className={`px-2 h-6 text-xs font-medium ${score.part1 === "1" || score.part1 === 1 ? "bg-primary text-white" : ""}`}
-                  onClick={() => onScoreChange(student.id, "part1", "1")}
+                  onClick={() => {
+                    onScoreChange(student.id, "part1", "1");
+                    // Log score change
+                    logUserAction('click', 'Score deel 1: 1', {
+                      studentId: student.id,
+                      studentName: student.name,
+                      part: "part1",
+                      score: 1
+                    });
+                  }}
                 >
                   1
                 </Button>
@@ -301,20 +323,12 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                 variant="outline"
                 size="sm"
                 className="text-xs h-6 bg-white hover:bg-gray-50 w-full my-2"
-                onClick={() => {
-                  const newPart = activePart === "part1" ? null : "part1";
-                  setActivePart(newPart);
-                  if (!showSimilarResponses && newPart !== null) {
-                    onToggleSimilarResponses();
-                  } else if (showSimilarResponses && newPart === null) {
-                    onToggleSimilarResponses();
-                  }
-                }}
+                onClick={() => handleToggleSimilarResponses("part1")}
               >
                 <Layers className="h-3 w-3 mr-1" />
                 {activePart === "part1"
                   ? "Verberg vergelijkbare antwoorden deel 1"
-                  : "Toon vergelijkbare   antwoorden deel 1"}
+                  : "Toon vergelijkbare antwoorden deel 1"}
               </Button>
 
               {activePart === "part1" && showSimilarResponses && (
@@ -352,7 +366,16 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                       : "ghost"
                   }
                   className={`px-2 h-6 text-xs font-medium border-r ${score.part2 === "0" || score.part2 === 0 ? "bg-primary text-white" : ""}`}
-                  onClick={() => onScoreChange(student.id, "part2", "0")}
+                  onClick={() => {
+                    onScoreChange(student.id, "part2", "0");
+                    // Log score change
+                    logUserAction('click', 'Score deel 2: 0', {
+                      studentId: student.id,
+                      studentName: student.name,
+                      part: "part2",
+                      score: 0
+                    });
+                  }}
                 >
                   0
                 </Button>
@@ -363,7 +386,16 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                       : "ghost"
                   }
                   className={`px-2 h-6 text-xs font-medium ${score.part2 === "1" || score.part2 === 1 ? "bg-primary text-white" : ""}`}
-                  onClick={() => onScoreChange(student.id, "part2", "1")}
+                  onClick={() => {
+                    onScoreChange(student.id, "part2", "1");
+                    // Log score change
+                    logUserAction('click', 'Score deel 2: 1', {
+                      studentId: student.id,
+                      studentName: student.name,
+                      part: "part2",
+                      score: 1
+                    });
+                  }}
                 >
                   1
                 </Button>
@@ -380,15 +412,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                 variant="outline"
                 size="sm"
                 className="text-xs h-6 bg-white hover:bg-gray-50 w-full my-2"
-                onClick={() => {
-                  const newPart = activePart === "part2" ? null : "part2";
-                  setActivePart(newPart);
-                  if (!showSimilarResponses && newPart !== null) {
-                    onToggleSimilarResponses();
-                  } else if (showSimilarResponses && newPart === null) {
-                    onToggleSimilarResponses();
-                  }
-                }}
+                onClick={() => handleToggleSimilarResponses("part2")}
               >
                 <Layers className="h-3 w-3 mr-1" />
                 {activePart === "part2"
