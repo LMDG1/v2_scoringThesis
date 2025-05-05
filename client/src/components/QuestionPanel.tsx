@@ -1,16 +1,15 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { ModelAnswer } from '@/lib/types';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Info, Maximize2 } from 'lucide-react';
 
 interface QuestionPanelProps {
   contextQuestion: string;
   question: string;
   modelAnswer: ModelAnswer;
+  isEconomyDataset: boolean;
 }
 
-const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion, modelAnswer }) => {
+const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion, modelAnswer, isEconomyDataset }) => {
   return (
     <div className="col-span-12 md:col-span-4 space-y-4 md:sticky md:top-4 md:self-start">
       {/* Test Question */}
@@ -32,6 +31,14 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion
           <h2 className="font-semibold text-gray-900">Correctievoorschrift</h2>
           <h3 className="text-xs text-gray-500">1 punt per deel</h3>
         </div>
+
+        {isEconomyDataset && ( // Condition to show the additional information
+          <div className="mt-3 text-xs text-gray-500">
+            <p style={{ whiteSpace: 'pre-line' }}>
+              {"Voorbeeld(en) van een juiste uitleg:\n\n"}
+            </p>
+          </div>
+        )}
         
         <div className="space-y-4">
           <div className="border-l-4 border-gray-400 pl-3">
@@ -50,6 +57,8 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion
             </p>
           </div>
         </div>
+
+        
       </Card>
       
       

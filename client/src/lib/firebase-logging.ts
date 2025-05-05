@@ -2,14 +2,24 @@
 // Create a new file: src/lib/firebase/logAction.ts
 
 import { collection, addDoc } from "firebase/firestore";
+
+declare global {
+  interface Window {
+    sessionId?: string;
+  }
+}
 import { db } from "./firebase.config";
 
 type UserAction = {
   action: string;
   name: string;
   timestamp: number;
-  userId?: string; // Optional, if you want to track which user performed the action
-  additionalData?: Record<string, any>; // Optional, for any extra data you might want to log
+  timestampReadable: string; // ISO format timestamp
+  sessionId: string;
+  environment: string;
+  userAgent: string;
+  userId?: string;
+  additionalData?: Record<string, any>;
 };
 
 /**
@@ -26,10 +36,18 @@ export const logUserAction = async (
   userId?: string
 ): Promise<void> => {
   try {
+    // Generate a session ID if not already created
+    if (!window.sessionId) {
+      window.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    }
     const userActionData: UserAction = {
       action,
       name,
       timestamp: Date.now(),
+      timestampReadable: new Date().toISOString(), // Add human-readable timestamp
+      sessionId: window.sessionId,
+      environment: import.meta.env.MODE, // 'development' or 'production'
+      userAgent: navigator.userAgent,
       ...(userId && { userId }), // Only add userId if it's provided
       ...(additionalData && { additionalData }), // Only add additionalData if it's provided
     };

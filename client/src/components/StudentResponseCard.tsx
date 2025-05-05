@@ -34,7 +34,6 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
   // Render text with or without highlighting for a specific part
   const renderStudentResponse = (part: "part1" | "part2") => {
     const responsePart = student.response[part];
-    const fullText = `${responsePart.prefix} ${responsePart.completion}`;
 
     if (!isExpanded) {
       return (
@@ -47,29 +46,30 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
       );
     }
 
-    let highlightedText = fullText;
-    const textWithHighlights = student.featureImportance[part].reduce(
+    // For the expanded view, process prefix and completion separately
+    const prefixText = responsePart.prefix;
+    const completionText = responsePart.completion;
+
+    // Apply highlighting only to the completion part
+    const highlightedCompletion = student.featureImportance[part].reduce(
       (acc, { word, importance }) => {
         const regex = new RegExp(`\\b${word}\\b`, "gi");
-
-        // Different background colors based on importance, avoid green/red to prevent confusion with score colors
         const bgColor = importance === "high" ? "bg-blue-300" : "bg-blue-100";
-
         return acc.replace(
           regex,
           `<span class="${bgColor} font-medium">$&</span>`,
         );
       },
-      fullText,
+      completionText
     );
 
     return (
       <div>
-        <p
-          className="text-sm"
-          dangerouslySetInnerHTML={{ __html: textWithHighlights }}
-        />
-      </div>
+      <p className="text-sm">
+        <span className="font-medium">{prefixText}</span>{" "}
+        <span dangerouslySetInnerHTML={{ __html: highlightedCompletion }} />
+      </p>
+    </div>
     );
   };
 
@@ -86,8 +86,8 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
 
     // Log the action to Firebase
     const actionName = activePart === part
-      ? `Verberg vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`
-      : `Toon vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`;
+      ? `Verberg meest vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`
+      : `Toon meest vergelijkbare antwoorden deel ${part === "part1" ? "1" : "2"}`;
 
     logUserAction('click', actionName, {
       studentId: student.id,
@@ -145,7 +145,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
     return (
       <div className="mt-2 border-l-2 border-primary pl-4">
         <h3 className="text-sm font-semibold mb-2">
-          Vergelijkbare antwoorden voor deel {part === "part1" ? "1" : "2"}:
+          Meest vergelijkbare antwoorden voor deel {part === "part1" ? "1" : "2"}:
         </h3>
         {responses.map((response, index) => (
           <div
@@ -180,7 +180,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
     <Card className="response-card bg-white/60 rounded-lg shadow p-4 border-2 border-blue-100/50 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center mb-3">
         <h2 className="font-semibold text-lg text-gray-800">
-          {student.name}
+          {"Leerling " + student.id}
         </h2>
       </div>
 
@@ -209,7 +209,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
                   </span>
                   {isExpanded && (
                     <span className="text-xs text-gray-600 mt-0.5">
-                      Betrouwbaarheid: {student.confidence}%
+                      Zekerheid: {student.confidence}%
                     </span>
                   )}
                 </div>
@@ -327,8 +327,8 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
               >
                 <Layers className="h-3 w-3 mr-1" />
                 {activePart === "part1"
-                  ? "Verberg vergelijkbare antwoorden deel 1"
-                  : "Toon vergelijkbare antwoorden deel 1"}
+                  ? "Verberg meest vergelijkbare antwoorden deel 1"
+                  : "Toon meest vergelijkbare antwoorden deel 1"}
               </Button>
 
               {activePart === "part1" && showSimilarResponses && (
@@ -416,8 +416,8 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
               >
                 <Layers className="h-3 w-3 mr-1" />
                 {activePart === "part2"
-                  ? "Verberg vergelijkbare antwoorden deel 2"
-                  : "Toon vergelijkbare antwoorden deel 2"}
+                  ? "Verberg meest vergelijkbare antwoorden deel 2"
+                  : "Toon meest vergelijkbare antwoorden deel 2"}
               </Button>
 
               {activePart === "part2" && showSimilarResponses && (

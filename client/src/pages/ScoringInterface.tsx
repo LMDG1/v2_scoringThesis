@@ -12,7 +12,6 @@ import {
   FileWarning,
   Info,
 } from "lucide-react";
-import v4_voorbeeld from "@/data/v4_voorbeeld.csv";
 import { parseCSV } from "@/lib/csvParser";
 import {
   Dialog,
@@ -27,6 +26,9 @@ const ScoringInterface = () => {
 
   // State for info dialog
   const [isInfoDialogOpen, setInfoDialogOpen] = useState(false);
+
+  // In ScoringInterface.tsx
+  const [datasetType, setDatasetType] = useState<"economy" | "other" | null>(null);
 
   const isLoading = false;
   const isError = false;
@@ -205,6 +207,11 @@ const ScoringInterface = () => {
           // Update state with the new data
           setCustomData(parsedData);
           console.log("Parsed Data:", parsedData);
+
+          // Reset dataset type for custom uploads ONLY if it's from file input, not preset buttons
+          if (!file.name.includes('economy') && !file.name.includes('biology')) {
+            setDatasetType(null);
+          }
           
           // Initialize teacher scores
           if(parsedData.length > 0){
@@ -289,7 +296,8 @@ const ScoringInterface = () => {
             Welkom bij de Nakijktool
           </h1>
           <p className="text-gray-600 mb-6">
-            Deze tool helpt je bij het beoordelen van open vragen met behulp van AI. 
+            Deze tool is ontwikkeld voor onderzoeksdoeleinden. 
+            Het biedt AI-nakijkondersteuning voor het beoordelen van open vragen.
             Kies een voorbeelddataset of upload je eigen CSV-bestand om te beginnen.
           </p>
           
@@ -300,8 +308,12 @@ const ScoringInterface = () => {
                 className="w-full py-6 flex flex-col items-center gap-2" 
                 onClick={async () => {
                   try {
-                    const response = await fetch('v4_voorbeeld.csv');
+                    const response = await fetch('Shorter_completely_final_bio_data.csv');
+                    //const response = await fetch('v4_voorbeeld.csv');
                     const csvContent = await response.text();
+
+                    // Add this line
+                    setDatasetType("other");
                     handleCSVUpload(new File([csvContent], 'biology.csv'));
                   } catch (error) {
                     toast({
@@ -318,8 +330,26 @@ const ScoringInterface = () => {
               
               <Button 
                 variant="outline"
-                className="w-full py-6 flex flex-col items-center gap-2"
-                // onClick={() => handleCSVUpload(new File([v4_voorbeeld], 'economy.csv'))}
+                className="w-full py-6 flex flex-col items-center gap-2" 
+                onClick={async () => {
+                  try {
+                    // Change this to load the economy dataset file
+                    const response = await fetch('Completely_final_eco_data.csv'); // <-- CHANGE THIS FILENAME
+                    const csvContent = await response.text();
+                    
+                    // Add these two lines
+                    setDatasetType("economy"); // Set dataset type
+                    
+                    // Then handle the CSV upload
+                    handleCSVUpload(new File([csvContent], 'economy.csv'));
+                  } catch (error) {
+                    toast({
+                      title: "Error loading economy CSV",
+                      description: "Could not load the example CSV file",
+                      variant: "destructive"
+                    });
+                  }
+                }}
               >
                 <span className="text-lg font-semibold">Economie Dataset</span>
                 {/* <span className="text-sm text-gray-500">Open vragen over marktwerking</span> */}
@@ -428,6 +458,7 @@ const ScoringInterface = () => {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="text-primary"
                   onClick={() => setInfoDialogOpen(true)}
                 >
                   <Info className="h-4 w-4" />
@@ -441,12 +472,12 @@ const ScoringInterface = () => {
                     De vergelijkbaarbeid van een leerlingantwoord met het
                     antwoordmodel.
                   </li>
-                  <li>De voorheen gescoorde leerlingantwoordeSn.</li>
+                  <li>De voorheen gescoorde leerlingantwoorden.</li>
                 </ul>
                 <p>De 'Waarom?' knop toont:</p>
                 <ul className="list-disc list-inside">
                   <li>
-                    De woorden die hebben bijgedragen aan de AI score.  
+                    De woorden die bijdragen aan de AI score.  
                     <br />
                     <span className="bg-blue-300 text-gray-900 px-1 rounded pl-6 inline-block">
                       Donkerblauwe
@@ -460,12 +491,10 @@ const ScoringInterface = () => {
                   </li>
                   <li>
                     Hoe zeker de AI is van een score suggestie, uitgedrukt in
-                    een betrouwbaarheidspercentage.
+                    een zekerheidspercentage.
                   </li>
                   <li>
-                    Een knop om vergelijkbare leerlingantwoorden te tonen, die
-                    al een score hebben gekregen (van jou of een collega
-                    docent).
+                    Een knop om de meest vergelijkbare leerlingantwoorden te tonen. Een algoritme berekent de vergelijkbaarheid tussen het huidige leerlingantwoord en reeds gescoorde antwoorden (door jou of een collega vakdocent).
                   </li>
                 </ul>
                 <DialogClose asChild>
@@ -478,7 +507,7 @@ const ScoringInterface = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
           <div className="text-sm text-gray-500">
             <span className="mr-2">
-              Opdracht: {currentQuestion?.assignmentName || "Onbekend"}
+              {/* Opdracht: Kijk de leerlingantwoorden van 4 {currentQuestion?.assignmentName || "Onbekend"} */}
             </span>
           </div>
         </div>
@@ -503,6 +532,7 @@ const ScoringInterface = () => {
           question={currentQuestion?.question}
           modelAnswer={currentQuestion?.modelAnswer}
           contextQuestion={currentQuestion?.contextQuestion}
+          isEconomyDataset={datasetType === "economy"}
         />
 
         {/* Right Column - Scrollable Student Responses */}
