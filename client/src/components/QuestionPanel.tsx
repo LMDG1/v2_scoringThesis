@@ -42,18 +42,21 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ question, contextQuestion
         
         <div className="space-y-4">
           <div className="border-l-4 border-gray-400 pl-3">
-            <h3 className="text-xs font-semibold text-gray-700 mb-1">Deel 1</h3>
+            <h3 className="text-xs font-semibold text-gray-700 mb-1"> {modelAnswer.part1.prefix}</h3>
             <p className="text-sm text-gray-700">
-              <span className="font-medium">{modelAnswer.part1.prefix}</span> 
-              {' '}{modelAnswer.part1.completion}
+              {/* <span className="font-medium">{modelAnswer.part1.prefix}</span>  */}
+              {/* {' '}{modelAnswer.part1.completion} */}
+              {modelAnswer.part1.completion}
             </p>
           </div>
           
           <div className="border-l-4 border-gray-300 pl-3">
-            <h3 className="text-xs font-semibold text-gray-700 mb-1">Deel 2</h3>
+          <h3 className="text-xs font-semibold text-gray-700 mb-1"> {modelAnswer.part2.prefix}</h3>
+            {/* <h3 className="text-xs font-semibold text-gray-700 mb-1">Deel 2</h3> */}
             <p className="text-sm text-gray-700">
-              <span className="font-medium">{modelAnswer.part2.prefix}</span> 
-              {' '}{modelAnswer.part2.completion}
+              {/* <span className="font-medium">{modelAnswer.part2.prefix}</span> 
+              {' '}{modelAnswer.part2.completion} */}
+              {modelAnswer.part2.completion}
             </p>
           </div>
         </div>

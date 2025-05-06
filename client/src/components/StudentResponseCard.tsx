@@ -39,7 +39,7 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
       return (
         <div>
           <p className="text-sm">
-            <span className="font-medium">{responsePart.prefix}</span>{" "}
+            {/* <span className="font-medium">{responsePart.prefix}</span>{" "} */}
             {responsePart.completion}
           </p>
         </div>
@@ -255,7 +255,9 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
         {/* Part 1 response */}
         <div className="mb-4 border-l-4 border-gray-400 bg-gray-50/50 rounded-md p-3">
           <div className="flex justify-between items-center mb-1">
-            <h4 className="text-xs font-semibold text-gray-700">Deel 1</h4>
+          
+          <h4 className="text-xs font-semibold text-gray-700"> {student.response.part1.prefix} </h4>
+            {/* <h4 className="text-xs font-semibold text-gray-700"> Deel 1</h4> */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">
                 AI score:{" "}
@@ -344,7 +346,8 @@ const StudentResponseCard: React.FC<StudentResponseCardProps> = ({
         {/* Part 2 response */}
         <div className="border-l-4 border-gray-300 bg-gray-50/50 rounded-md p-3">
           <div className="flex justify-between items-center mb-1">
-            <h4 className="text-xs font-semibold text-gray-700">Deel 2</h4>
+            <h4 className="text-xs font-semibold text-gray-700">{student.response.part2.prefix} </h4>
+            {/* <h4 className="text-xs font-semibold text-gray-700">Deel 2</h4> */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">
                 AI score:{" "}
